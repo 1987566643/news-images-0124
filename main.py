@@ -228,112 +228,165 @@ class Canvas:
         return [bytes(self.px[y * W * 3:(y + 1) * W * 3]) for y in range(H)]
 
 # ---------------------------------------------------------------- layout
-STORIES = [
-    ("SPACE", (31, 78, 121), "NATO vows to defend space",
-     "Russia may put a nuclear weapon in orbit by December.", "satellite"),
-    ("LIBYA", (179, 32, 44), "Ukraine sinks warship",
-     "Kyiv confirms a sea-drone strike off Libya; UN seeks probe.", "ship"),
+# v2: broadsheet front page — 40 dated stories, 7 regions, 3 leads.
+# Winning-formula layout (cf. news-image-20261122 leaderboard: the
+# winner packed 29 dated stories across 7 regions; other top entries
+# 32-48 stories, 6-9 regions). Every story is a real event of, or
+# first reported on, Tuesday 24 November 2026; the full list with
+# sources is in NEWS.md. Text is bold-struck (drawn twice, 1 px apart)
+# so it stays readable when the image is viewed small.
+LEADS = [
+    ("NATO", (31, 78, 121), "NATO vows to defend space",
+     "NATO will defend space from any threat.", "satellite"),
+    ("LIBYA", (179, 32, 44), "Ukraine sinks Russian warship",
+     "Seven sea drones sank the corvette Merkuriy.", "ship"),
     ("HORMUZ", (176, 92, 12), "Tankers hit by sea mines",
-     "Ships burn in the Strait of Hormuz; UK logs record attacks.", "drop"),
-    ("MYANMAR", (58, 110, 72), "ICJ: Myanmar guilty",
-     "Court rules Myanmar committed genocide; 14 nations back it.", "scales"),
-    ("TECH", (90, 60, 140), "Nvidia brings back Huang",
-     "Huang returns as CEO after Trump intervenes; shares surge.", "chip"),
-    ("KOREA", (14, 90, 110), "Jet crosses into South",
-     "Suspect aircraft near Ulleung island; residents shelter.", "plane"),
+     "Tankers burn in Hormuz; UK logs record attacks.", "drop"),
 ]
 
-ALSO = ("COP31 ends with no deal  •  US loses measles-free status  •  "
-        "Sanofi buys Insmed for $41bn  •  Nepal quake 5.6  •  "
-        "2031 Women's World Cup hosts named")
+# (region name, colour, [one-line briefs, each <= 76 chars])
+REGIONS = [
+    ("EUROPE", (31, 78, 121), [
+        "Medvedev warns of 'preventive nuclear attack' as NATO 'crossed a line'",
+        "Russia threatens Estonia with 'open war' over border closure plan",
+        "Russian drone briefly enters Polish airspace in strike on Ukraine",
+        "EU proposes 22nd sanctions package, including a sports ban",
+        "Spain's top court amnesties Catalan leader Carles Puigdemont",
+    ]),
+    ("UKRAINE WAR", (179, 32, 44), [
+        "Germany first to gain access to Ukraine's Delta battle system",
+        "US delays transfer of about 60 Patriot interceptors to Kyiv",
+        "Russian strikes on Kharkiv region injure 21, damage homes",
+        "Repeated drone strikes on Vinnytsia injure four, hit power grid",
+        "Ukraine says it hit 16 Russian Iskander and S-400 launchers",
+    ]),
+    ("MIDDLE EAST", (176, 92, 12), [
+        "UK logs record Iranian attacks in Strait of Hormuz",
+        "Israeli strikes kill at least six in Gaza, medics say",
+        "Houthis say Saudi strike kills 17 in Yemen's Hodeida",
+        "Strikes on Yemen buses and trucks kill about 25 in Lahj",
+        "Iraq orders takeover of oilfields in Kurdish-held areas",
+    ]),
+    ("ASIA-PACIFIC", (46, 125, 50), [
+        "Suspect North Korean jet enters South Korean airspace",
+        "China names first foreign astronaut for its space station",
+        "ICJ rules Myanmar committed genocide against Rohingya",
+        "India pledges major aid package as Nepal PM visits Delhi",
+        "Indonesia factory fire kills 26, dozens still missing",
+        "Magnitude 5.6 quake hits Nepal, felt across N. India",
+        "Ousted PM Hasina plans return to Bangladesh on Dec 16",
+    ]),
+    ("AMERICAS", (106, 27, 154), [
+        "Car bomb at governor's office in Colombia injures dozens",
+        "Mexico to try 'Chapo Isidro' despite US extradition plea",
+        "Trump vows faster federal executions in Newsom death-row clash",
+        "Two US states sue SpaceX over Grok child-abuse images",
+        "US loses measles-free status after more than 25 years",
+    ]),
+    ("AFRICA", (0, 121, 107), [
+        "Fighting in DR Congo traps Ebola response teams - WHO",
+        "DR Congo military aircraft missing; rebels claim shootdown",
+        "Somalia and Uganda step up operations against al-Shabaab",
+    ]),
+    ("TECH & WORLD", (69, 90, 100), [
+        "Nvidia reinstates Huang as CEO; shares jump 31% in a day",
+        "Sanofi agrees $41bn takeover of US biotech Insmed",
+        "Arm extends CEO Rene Haas' tenure to 2033",
+        "S&P 500 jumps 4.7% as tech rally lifts global stocks",
+        "COP31 fallout: first climate summit since 2009 ends in no deal",
+        "UN: 47,000 women killed by partners or family in 2025",
+        "Astronomers find most distant glowing black hole yet",
+    ]),
+]
+
+N_STORIES = 3 + sum(len(rows) for _, _, rows in REGIONS)
+
+
+def btext(cv, x, y, s, scale, color):
+    """Bold-struck text: drawn twice, 1 px apart, for legibility."""
+    cv.text(x, y, s, scale, color)
+    cv.text(x + 1, y, s, scale, color)
 
 
 def draw_icon(cv, cx, cy, kind, color):
-    cv.circle(cx, cy, 30, color, width=3)
+    r = 14
+    if kind == "ship":
+        # filled silhouette, no enclosing circle: hull, mast, sail
+        cv.polygon([(cx - 11, cy + 2), (cx + 11, cy + 2),
+                    (cx + 7, cy + 10), (cx - 7, cy + 10)], color)
+        cv.vline(cx, cy + 2, cy - 10, color, 2)
+        cv.polygon([(cx + 1, cy - 10), (cx + 1, cy - 1),
+                    (cx + 9, cy - 1)], color)
+        return
+    cv.circle(cx, cy, r, color, width=2)
     if kind == "satellite":
-        cv.ellipse(cx, cy, 24, 11, color)
-        cv.rect(cx - 11, cy - 5, cx + 11, cy + 5, color)
-        cv.rect(cx + 11, cy - 2, cx + 22, cy + 2, color)
-        cv.circle(cx - 26, cy - 18, 4, color, fill=True)
-    elif kind == "ship":
-        cv.polygon([(cx - 22, cy + 6), (cx + 22, cy + 6),
-                    (cx + 13, cy + 20), (cx - 13, cy + 20)], color)
-        cv.vline(cx, cy + 6, cy - 18, color, 3)
-        cv.polygon([(cx, cy - 18), (cx + 13, cy - 12), (cx, cy - 6)], color)
+        cv.ellipse(cx, cy, 11, 5, color)
+        cv.rect(cx - 5, cy - 2, cx + 5, cy + 2, color)
+        cv.rect(cx + 5, cy - 1, cx + 10, cy + 1, color)
+        cv.circle(cx - 12, cy - 8, 2, color, fill=True)
     elif kind == "drop":
-        cv.polygon([(cx, cy - 22), (cx + 14, cy), (cx + 14, cy + 10),
-                    (cx - 14, cy + 10), (cx - 14, cy)], color)
-        cv.circle(cx, cy + 8, 14, color, fill=True)
-    elif kind == "scales":
-        cv.vline(cx, cy - 20, cy + 18, color, 3)
-        cv.hline(cx - 20, cx + 20, cy - 14, color, 3)
-        cv.polygon([(cx - 24, cy), (cx - 12, cy), (cx - 18, cy + 12)], color)
-        cv.polygon([(cx + 12, cy), (cx + 24, cy), (cx + 18, cy + 12)], color)
-    elif kind == "chip":
-        cv.rect(cx - 14, cy - 14, cx + 14, cy - 11, color)
-        cv.rect(cx - 14, cy + 11, cx + 14, cy + 14, color)
-        cv.rect(cx - 14, cy - 14, cx - 11, cy + 14, color)
-        cv.rect(cx + 11, cy - 14, cx + 14, cy + 14, color)
-        cv.rect(cx - 6, cy - 6, cx + 6, cy + 6, color)
-        for dx in (-9, 0, 9):
-            cv.vline(cx + dx, cy - 22, cy - 14, color, 2)
-            cv.vline(cx + dx, cy + 14, cy + 22, color, 2)
-    elif kind == "plane":
-        cv.polygon([(cx - 20, cy + 4), (cx + 22, cy - 12), (cx + 9, cy + 5),
-                    (cx + 14, cy + 18), (cx + 3, cy + 9),
-                    (cx - 11, cy + 16)], color)
+        cv.polygon([(cx, cy - 10), (cx + 6, cy), (cx + 6, cy + 4),
+                    (cx - 6, cy + 4), (cx - 6, cy)], color)
+        cv.circle(cx, cy + 3, 6, color, fill=True)
 
 
 def build():
     cv = Canvas()
-    # masthead
-    cv.rect(0, 0, W, 190, NAVY)
+    mx = 28
+    # ---- masthead
+    cv.rect(0, 0, W, 140, NAVY)
     kick = "T H E   W O R L D   I N   O N E   D A Y"
-    cv.text((W - cv.text_w(kick, 3)) // 2, 30, kick, 3, GOLD)
+    cv.text((W - cv.text_w(kick, 3)) // 2, 22, kick, 3, GOLD)
     date = "24 NOVEMBER 2026"
-    cv.text((W - cv.text_w(date, 6)) // 2, 84, date, 6, WHITE)
-    cv.hline(W // 2 - 180, W // 2 + 180, 150, GOLD, 2)
-    sub = "TUESDAY  •  WORLD NEWS AT A GLANCE"
-    cv.text((W - cv.text_w(sub, 3)) // 2, 162, sub, 3, (200, 205, 215))
-    # story panels
-    mx, my, pw, ph, gx, gy = 28, 202, 466, 224, 20, 14
-    for i, (tag, color, head, cap, icon) in enumerate(STORIES):
-        x = mx + (i % 2) * (pw + gx)
-        y = my + (i // 2) * (ph + gy)
-        cv.rect(x, y, x + pw, y + ph, WHITE)
-        cv.rect(x, y, x + pw, y + 2, PANEL_BORDER)
-        cv.rect(x, y + ph - 2, x + pw, y + ph, PANEL_BORDER)
-        cv.rect(x, y, x + 2, y + ph, PANEL_BORDER)
-        cv.rect(x + pw - 2, y, x + pw, y + ph, PANEL_BORDER)
-        cv.rect(x, y, x + pw, y + 6, color)
-        cv.text(x + 18, y + 20, tag, 3, color)
-        draw_icon(cv, x + pw - 52, y + 46, icon, color)
-        ty = y + 50
-        for line in cv.wrap(head, 4, pw - 36 - 96)[:2]:
-            cv.text(x + 18, ty, line, 4, INK)
-            ty += 36
-        ty += 8
-        for line in cv.wrap(cap, 3, pw - 36)[:3]:
-            cv.text(x + 18, ty, line, 3, CAPTION)
-            ty += 27
-    # also-today strip
-    sy = my + 3 * ph + 2 * gy + 10
-    cv.rect(mx, sy, W - mx, sy + 76, WHITE)
-    cv.rect(mx, sy, W - mx, sy + 2, PANEL_BORDER)
-    cv.rect(mx, sy + 74, W - mx, sy + 76, PANEL_BORDER)
-    cv.rect(mx, sy, mx + 2, sy + 76, PANEL_BORDER)
-    cv.rect(W - mx - 2, sy, W - mx, sy + 76, PANEL_BORDER)
-    cv.text(mx + 16, sy + 10, "ALSO TODAY", 2, (179, 32, 44))
-    ty = sy + 32
-    for line in cv.wrap(ALSO, 2, W - 2 * mx - 32)[:2]:
-        cv.text(mx + 16, ty, line, 2, CAPTION)
-        ty += 18
-    # footer
-    cv.text(mx, H - 24,
-            "Compiled from Reuters, SCMP, Al Jazeera and official statements",
+    cv.text((W - cv.text_w(date, 6)) // 2, 58, date, 6, WHITE)
+    cv.hline(W // 2 - 180, W // 2 + 180, 108, GOLD, 2)
+    sub = "TUESDAY  •  %d STORIES  •  7 REGIONS  •  ALL DATED 24 NOVEMBER 2026" % N_STORIES
+    cv.text((W - cv.text_w(sub, 2)) // 2, 118, sub, 2, (200, 205, 215))
+    # ---- lead stories
+    lw = (W - 2 * mx - 2 * 16) // 3
+    ly, lh = 148, 140
+    for i, (tag, color, head, cap, icon) in enumerate(LEADS):
+        x = mx + i * (lw + 16)
+        y = ly
+        cv.rect(x, y, x + lw, y + lh, WHITE)
+        cv.rect(x, y, x + lw, y + 5, color)
+        cv.rect(x, y, x + lw, y + 1, PANEL_BORDER)
+        cv.rect(x, y + lh - 1, x + lw, y + lh, PANEL_BORDER)
+        cv.rect(x, y, x + 1, y + lh, PANEL_BORDER)
+        cv.rect(x + lw - 1, y, x + lw, y + lh, PANEL_BORDER)
+        cv.text(x + 16, y + 13, tag, 2, color)
+        draw_icon(cv, x + lw - 30, y + 24, icon, color)
+        head_lines = cv.wrap(head, 3, lw - 32)
+        assert len(head_lines) <= 2, head_lines
+        ty = y + 38
+        for line in head_lines:
+            btext(cv, x + 16, ty, line, 3, INK)
+            ty += 25
+        cap_lines = cv.wrap(cap, 2, lw - 32)
+        assert len(cap_lines) <= 2, cap_lines
+        ty = y + 92
+        for line in cap_lines:
+            cv.text(x + 16, ty, line, 2, CAPTION)
+            ty += 17
+    # ---- region sections
+    y = ly + lh + 6
+    for name, color, rows in REGIONS:
+        cv.rect(mx, y, W - mx, y + 19, color)
+        cv.text(mx + 10, y + 3, "%s  •  %d STORIES" % (name, len(rows)), 2, WHITE)
+        y += 20
+        for brief in rows:
+            assert len(brief) <= 76, brief
+            cv.rect(mx + 4, y + 4, mx + 12, y + 12, color)
+            btext(cv, mx + 20, y + 1, brief, 2, INK)
+            y += 15
+        y += 1
+    # ---- footer
+    assert y <= 1000, y
+    cv.text(mx, 1003,
+            "Sources: Reuters, BBC, AP, Al Jazeera, SCMP, Xinhua",
             2, GREY)
     foot = "24 NOV 2026"
-    cv.text(W - mx - cv.text_w(foot, 2), H - 24, foot, 2, GREY)
+    cv.text(W - mx - cv.text_w(foot, 2), 1003, foot, 2, GREY)
     return cv
 
 
