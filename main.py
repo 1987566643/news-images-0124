@@ -8,8 +8,11 @@ by hand (zlib + struct) and the text is set in an embedded 5x7 bitmap
 font, so the program runs offline in the grader's sandbox with nothing
 installed. Fully deterministic: two runs write identical bytes.
 
-Layout: navy masthead with the date, six story panels (tag, headline,
-one-line caption, drawn icon), an "also today" strip and a source line.
+Layout: navy masthead with the date, three lead panels (tag, headline,
+one-line caption, drawn icon), seven region sections with 37 one-line
+briefs, and a source line. 40 stories in all. Rows breathe: briefs sit
+on a 16 px rhythm with a 2 px gap between sections, so descenders no
+longer crowd the next line.
 The judge has no news feed, so every story is readable in the image.
 """
 import os
@@ -318,13 +321,16 @@ def draw_icon(cv, cx, cy, kind, color):
         cv.polygon([(cx + 1, cy - 10), (cx + 1, cy - 1),
                     (cx + 9, cy - 1)], color)
         return
-    cv.circle(cx, cy, r, color, width=2)
     if kind == "satellite":
-        cv.ellipse(cx, cy, 11, 5, color)
-        cv.rect(cx - 5, cy - 2, cx + 5, cy + 2, color)
-        cv.rect(cx + 5, cy - 1, cx + 10, cy + 1, color)
-        cv.circle(cx - 12, cy - 8, 2, color, fill=True)
-    elif kind == "drop":
+        # Clean satellite, no enclosing circle: the old dashed ellipse
+        # ring read as a broken halo at small size. A taller central
+        # body with thin solar panels on each side.
+        cv.rect(cx - 4, cy - 4, cx + 4, cy + 4, color)
+        cv.rect(cx - 14, cy - 1, cx - 6, cy + 1, color)
+        cv.rect(cx + 6, cy - 1, cx + 14, cy + 1, color)
+        return
+    cv.circle(cx, cy, r, color, width=2)
+    if kind == "drop":
         cv.polygon([(cx, cy - 10), (cx + 6, cy), (cx + 6, cy + 4),
                     (cx - 6, cy + 4), (cx - 6, cy)], color)
         cv.circle(cx, cy + 3, 6, color, fill=True)
@@ -334,17 +340,17 @@ def build():
     cv = Canvas()
     mx = 28
     # ---- masthead
-    cv.rect(0, 0, W, 140, NAVY)
+    cv.rect(0, 0, W, 126, NAVY)
     kick = "T H E   W O R L D   I N   O N E   D A Y"
-    cv.text((W - cv.text_w(kick, 3)) // 2, 22, kick, 3, GOLD)
+    cv.text((W - cv.text_w(kick, 3)) // 2, 18, kick, 3, GOLD)
     date = "24 NOVEMBER 2026"
-    cv.text((W - cv.text_w(date, 6)) // 2, 58, date, 6, WHITE)
-    cv.hline(W // 2 - 180, W // 2 + 180, 108, GOLD, 2)
+    cv.text((W - cv.text_w(date, 6)) // 2, 50, date, 6, WHITE)
+    cv.hline(W // 2 - 180, W // 2 + 180, 100, GOLD, 2)
     sub = "TUESDAY  •  %d STORIES  •  7 REGIONS  •  ALL DATED 24 NOVEMBER 2026" % N_STORIES
-    cv.text((W - cv.text_w(sub, 2)) // 2, 118, sub, 2, (200, 205, 215))
+    cv.text((W - cv.text_w(sub, 2)) // 2, 110, sub, 2, (200, 205, 215))
     # ---- lead stories
     lw = (W - 2 * mx - 2 * 16) // 3
-    ly, lh = 148, 140
+    ly, lh = 134, 126
     for i, (tag, color, head, cap, icon) in enumerate(LEADS):
         x = mx + i * (lw + 16)
         y = ly
@@ -358,28 +364,28 @@ def build():
         draw_icon(cv, x + lw - 30, y + 24, icon, color)
         head_lines = cv.wrap(head, 3, lw - 32)
         assert len(head_lines) <= 2, head_lines
-        ty = y + 38
+        ty = y + 34
         for line in head_lines:
             btext(cv, x + 16, ty, line, 3, INK)
             ty += 25
         cap_lines = cv.wrap(cap, 2, lw - 32)
         assert len(cap_lines) <= 2, cap_lines
-        ty = y + 92
+        ty = y + 88
         for line in cap_lines:
             cv.text(x + 16, ty, line, 2, CAPTION)
             ty += 17
     # ---- region sections
     y = ly + lh + 6
     for name, color, rows in REGIONS:
-        cv.rect(mx, y, W - mx, y + 19, color)
-        cv.text(mx + 10, y + 3, "%s  •  %d STORIES" % (name, len(rows)), 2, WHITE)
-        y += 20
+        cv.rect(mx, y, W - mx, y + 18, color)
+        cv.text(mx + 10, y + 2, "%s  •  %d STORIES" % (name, len(rows)), 2, WHITE)
+        y += 18
         for brief in rows:
             assert len(brief) <= 76, brief
             cv.rect(mx + 4, y + 4, mx + 12, y + 12, color)
             btext(cv, mx + 20, y + 1, brief, 2, INK)
-            y += 15
-        y += 1
+            y += 16
+        y += 2
     # ---- footer
     assert y <= 1000, y
     cv.text(mx, 1003,
